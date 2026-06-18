@@ -24,114 +24,123 @@ trap cleanup_mount EXIT
 
 create_dmg_background() {
   local output_path="$1"
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  local background_1x="$tmp_dir/background.png"
+  local background_2x="$tmp_dir/background@2x.png"
 
-  /usr/bin/swift - "$output_path" <<'SWIFT'
+  /usr/bin/swift - "$background_1x" "$background_2x" <<'SWIFT'
 import AppKit
 
-let outputPath = CommandLine.arguments[1]
-let scale: CGFloat = 2
 let pointWidth: CGFloat = 640
 let pointHeight: CGFloat = 400
-let pixelWidth = Int(pointWidth * scale)
-let pixelHeight = Int(pointHeight * scale)
 
-guard let bitmap = NSBitmapImageRep(
-    bitmapDataPlanes: nil,
-    pixelsWide: pixelWidth,
-    pixelsHigh: pixelHeight,
-    bitsPerSample: 8,
-    samplesPerPixel: 4,
-    hasAlpha: true,
-    isPlanar: false,
-    colorSpaceName: .deviceRGB,
-    bytesPerRow: 0,
-    bitsPerPixel: 0
-) else {
-    fatalError("Could not create DMG background bitmap.")
-}
+func renderBackground(outputPath: String, scale: CGFloat) throws {
+    let pixelWidth = Int(pointWidth * scale)
+    let pixelHeight = Int(pointHeight * scale)
 
-NSGraphicsContext.saveGraphicsState()
-NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+    guard let bitmap = NSBitmapImageRep(
+        bitmapDataPlanes: nil,
+        pixelsWide: pixelWidth,
+        pixelsHigh: pixelHeight,
+        bitsPerSample: 8,
+        samplesPerPixel: 4,
+        hasAlpha: true,
+        isPlanar: false,
+        colorSpaceName: .deviceRGB,
+        bytesPerRow: 0,
+        bitsPerPixel: 0
+    ) else {
+        fatalError("Could not create DMG background bitmap.")
+    }
 
-func px(_ value: CGFloat) -> CGFloat {
-    value * scale
-}
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
 
-let canvas = NSRect(x: 0, y: 0, width: CGFloat(pixelWidth), height: CGFloat(pixelHeight))
-NSColor(calibratedRed: 0.965, green: 0.973, blue: 0.984, alpha: 1).setFill()
-canvas.fill()
+    func px(_ value: CGFloat) -> CGFloat {
+        value * scale
+    }
 
-let accent = NSColor(calibratedRed: 0.075, green: 0.455, blue: 0.980, alpha: 1)
-let ink = NSColor(calibratedRed: 0.105, green: 0.118, blue: 0.145, alpha: 1)
-let muted = NSColor(calibratedRed: 0.395, green: 0.430, blue: 0.490, alpha: 1)
+    let canvas = NSRect(x: 0, y: 0, width: CGFloat(pixelWidth), height: CGFloat(pixelHeight))
+    NSColor(calibratedRed: 0.965, green: 0.973, blue: 0.984, alpha: 1).setFill()
+    canvas.fill()
 
-func centered(_ text: String, y: CGFloat, height: CGFloat, font: NSFont, color: NSColor) {
-    let paragraph = NSMutableParagraphStyle()
-    paragraph.alignment = .center
-    let attrs: [NSAttributedString.Key: Any] = [
-        .font: font,
-        .foregroundColor: color,
-        .paragraphStyle: paragraph
-    ]
-    (text as NSString).draw(
-        in: NSRect(x: px(40), y: px(y), width: px(pointWidth - 80), height: px(height)),
-        withAttributes: attrs
+    let accent = NSColor(calibratedRed: 0.075, green: 0.455, blue: 0.980, alpha: 1)
+    let ink = NSColor(calibratedRed: 0.105, green: 0.118, blue: 0.145, alpha: 1)
+    let muted = NSColor(calibratedRed: 0.395, green: 0.430, blue: 0.490, alpha: 1)
+
+    func centered(_ text: String, y: CGFloat, height: CGFloat, font: NSFont, color: NSColor) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: color,
+            .paragraphStyle: paragraph
+        ]
+        (text as NSString).draw(
+            in: NSRect(x: px(40), y: px(y), width: px(pointWidth - 80), height: px(height)),
+            withAttributes: attrs
+        )
+    }
+
+    centered(
+        "Drag Tappy to Applications",
+        y: 322,
+        height: 38,
+        font: NSFont.systemFont(ofSize: px(29), weight: .bold),
+        color: ink
     )
+
+    centered(
+        "Then open Tappy from your Applications folder.",
+        y: 294,
+        height: 24,
+        font: NSFont.systemFont(ofSize: px(14), weight: .medium),
+        color: muted
+    )
+
+    let arrow = NSBezierPath()
+    arrow.move(to: NSPoint(x: px(246), y: px(214)))
+    arrow.line(to: NSPoint(x: px(394), y: px(214)))
+    arrow.lineWidth = px(7)
+    arrow.lineCapStyle = .round
+    accent.setStroke()
+    arrow.stroke()
+
+    let head = NSBezierPath()
+    head.move(to: NSPoint(x: px(394), y: px(214)))
+    head.line(to: NSPoint(x: px(367), y: px(234)))
+    head.move(to: NSPoint(x: px(394), y: px(214)))
+    head.line(to: NSPoint(x: px(367), y: px(194)))
+    head.lineWidth = px(7)
+    head.lineCapStyle = .round
+    head.lineJoinStyle = .round
+    accent.setStroke()
+    head.stroke()
+
+    let leftRing = NSBezierPath(ovalIn: NSRect(x: px(119), y: px(164), width: px(82), height: px(82)))
+    accent.withAlphaComponent(0.10).setFill()
+    leftRing.fill()
+
+    let rightRing = NSBezierPath(ovalIn: NSRect(x: px(439), y: px(164), width: px(82), height: px(82)))
+    accent.withAlphaComponent(0.10).setFill()
+    rightRing.fill()
+
+    NSGraphicsContext.restoreGraphicsState()
+
+    guard let data = bitmap.representation(using: .png, properties: [:]) else {
+        fatalError("Could not encode DMG background PNG.")
+    }
+
+    try data.write(to: URL(fileURLWithPath: outputPath))
 }
 
-centered(
-    "Drag Tappy to Applications",
-    y: 322,
-    height: 38,
-    font: NSFont.systemFont(ofSize: px(29), weight: .bold),
-    color: ink
-)
-
-centered(
-    "Then open Tappy from your Applications folder.",
-    y: 294,
-    height: 24,
-    font: NSFont.systemFont(ofSize: px(14), weight: .medium),
-    color: muted
-)
-
-let arrow = NSBezierPath()
-arrow.move(to: NSPoint(x: px(246), y: px(214)))
-arrow.line(to: NSPoint(x: px(394), y: px(214)))
-arrow.lineWidth = px(7)
-arrow.lineCapStyle = .round
-accent.setStroke()
-arrow.stroke()
-
-let head = NSBezierPath()
-head.move(to: NSPoint(x: px(394), y: px(214)))
-head.line(to: NSPoint(x: px(367), y: px(234)))
-head.move(to: NSPoint(x: px(394), y: px(214)))
-head.line(to: NSPoint(x: px(367), y: px(194)))
-head.lineWidth = px(7)
-head.lineCapStyle = .round
-head.lineJoinStyle = .round
-accent.setStroke()
-head.stroke()
-
-let leftRing = NSBezierPath(ovalIn: NSRect(x: px(119), y: px(164), width: px(82), height: px(82)))
-accent.withAlphaComponent(0.10).setFill()
-leftRing.fill()
-
-let rightRing = NSBezierPath(ovalIn: NSRect(x: px(439), y: px(164), width: px(82), height: px(82)))
-accent.withAlphaComponent(0.10).setFill()
-rightRing.fill()
-
-NSGraphicsContext.restoreGraphicsState()
-
-guard let data = bitmap.representation(using: .png, properties: [:]) else {
-    fatalError("Could not encode DMG background PNG.")
-}
-
-try data.write(to: URL(fileURLWithPath: outputPath))
+try renderBackground(outputPath: CommandLine.arguments[1], scale: 1)
+try renderBackground(outputPath: CommandLine.arguments[2], scale: 2)
 SWIFT
 
-  /usr/bin/sips -s dpiWidth 144 -s dpiHeight 144 "$output_path" >/dev/null
+  /usr/bin/tiffutil -cathidpicheck "$background_1x" "$background_2x" -out "$output_path" >/dev/null
+  rm -rf "$tmp_dir"
 }
 
 style_dmg_window() {
@@ -161,7 +170,7 @@ tell application "Finder"
   set arrangement of viewOptions to not arranged
   set icon size of viewOptions to 96
   set text size of viewOptions to 12
-  set backgroundImage to POSIX file (mountPath & "/.background/background.png") as alias
+  set backgroundImage to POSIX file (mountPath & "/.background/background.tiff") as alias
   set background picture of viewOptions to backgroundImage
 
   set position of item "Tappy.app" of dmgFolder to {160, 218}
@@ -225,7 +234,7 @@ fi
 cp -R "$APP_PATH" "$STAGING_DIR/"
 ln -s /Applications "$STAGING_DIR/Applications"
 mkdir -p "$STAGING_DIR/.background"
-create_dmg_background "$STAGING_DIR/.background/background.png"
+create_dmg_background "$STAGING_DIR/.background/background.tiff"
 /usr/bin/SetFile -a V "$STAGING_DIR/.background" 2>/dev/null || /usr/bin/chflags hidden "$STAGING_DIR/.background" 2>/dev/null || true
 
 hdiutil create \
