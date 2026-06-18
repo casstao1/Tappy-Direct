@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	    Tappy Direct is the Developer ID (non-sandboxed) build distributed
+	    outside the Mac App Store.
+
+	    The App Sandbox is intentionally NOT enabled here. Tappy's auditory
+	    typing feedback relies on a system-wide, listen-only CGEventTap
+	    (Input Monitoring), which the App Sandbox forbids. Outside the
+	    sandbox no entitlement is required for Input Monitoring (it is a
+	    runtime TCC grant) or for the outbound network access used by license
+	    verification. Hardened Runtime is still applied at sign time by
+	    scripts/build-dmg.sh, as required for notarization.
+	-->
+</dict>
+</plist>
