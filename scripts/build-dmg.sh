@@ -29,13 +29,16 @@ create_dmg_background() {
 import AppKit
 
 let outputPath = CommandLine.arguments[1]
-let width = 640
-let height = 400
+let scale: CGFloat = 2
+let pointWidth: CGFloat = 640
+let pointHeight: CGFloat = 400
+let pixelWidth = Int(pointWidth * scale)
+let pixelHeight = Int(pointHeight * scale)
 
 guard let bitmap = NSBitmapImageRep(
     bitmapDataPlanes: nil,
-    pixelsWide: width,
-    pixelsHigh: height,
+    pixelsWide: pixelWidth,
+    pixelsHigh: pixelHeight,
     bitsPerSample: 8,
     samplesPerPixel: 4,
     hasAlpha: true,
@@ -50,7 +53,11 @@ guard let bitmap = NSBitmapImageRep(
 NSGraphicsContext.saveGraphicsState()
 NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
 
-let canvas = NSRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))
+func px(_ value: CGFloat) -> CGFloat {
+    value * scale
+}
+
+let canvas = NSRect(x: 0, y: 0, width: CGFloat(pixelWidth), height: CGFloat(pixelHeight))
 NSColor(calibratedRed: 0.965, green: 0.973, blue: 0.984, alpha: 1).setFill()
 canvas.fill()
 
@@ -67,7 +74,7 @@ func centered(_ text: String, y: CGFloat, height: CGFloat, font: NSFont, color: 
         .paragraphStyle: paragraph
     ]
     (text as NSString).draw(
-        in: NSRect(x: 40, y: y, width: CGFloat(width - 80), height: height),
+        in: NSRect(x: px(40), y: px(y), width: px(pointWidth - 80), height: px(height)),
         withAttributes: attrs
     )
 }
@@ -76,7 +83,7 @@ centered(
     "Drag Tappy to Applications",
     y: 322,
     height: 38,
-    font: NSFont.systemFont(ofSize: 29, weight: .bold),
+    font: NSFont.systemFont(ofSize: px(29), weight: .bold),
     color: ink
 )
 
@@ -84,34 +91,34 @@ centered(
     "Then open Tappy from your Applications folder.",
     y: 294,
     height: 24,
-    font: NSFont.systemFont(ofSize: 14, weight: .medium),
+    font: NSFont.systemFont(ofSize: px(14), weight: .medium),
     color: muted
 )
 
 let arrow = NSBezierPath()
-arrow.move(to: NSPoint(x: 246, y: 214))
-arrow.line(to: NSPoint(x: 394, y: 214))
-arrow.lineWidth = 7
+arrow.move(to: NSPoint(x: px(246), y: px(214)))
+arrow.line(to: NSPoint(x: px(394), y: px(214)))
+arrow.lineWidth = px(7)
 arrow.lineCapStyle = .round
 accent.setStroke()
 arrow.stroke()
 
 let head = NSBezierPath()
-head.move(to: NSPoint(x: 394, y: 214))
-head.line(to: NSPoint(x: 367, y: 234))
-head.move(to: NSPoint(x: 394, y: 214))
-head.line(to: NSPoint(x: 367, y: 194))
-head.lineWidth = 7
+head.move(to: NSPoint(x: px(394), y: px(214)))
+head.line(to: NSPoint(x: px(367), y: px(234)))
+head.move(to: NSPoint(x: px(394), y: px(214)))
+head.line(to: NSPoint(x: px(367), y: px(194)))
+head.lineWidth = px(7)
 head.lineCapStyle = .round
 head.lineJoinStyle = .round
 accent.setStroke()
 head.stroke()
 
-let leftRing = NSBezierPath(ovalIn: NSRect(x: 119, y: 164, width: 82, height: 82))
+let leftRing = NSBezierPath(ovalIn: NSRect(x: px(119), y: px(164), width: px(82), height: px(82)))
 accent.withAlphaComponent(0.10).setFill()
 leftRing.fill()
 
-let rightRing = NSBezierPath(ovalIn: NSRect(x: 439, y: 164, width: 82, height: 82))
+let rightRing = NSBezierPath(ovalIn: NSRect(x: px(439), y: px(164), width: px(82), height: px(82)))
 accent.withAlphaComponent(0.10).setFill()
 rightRing.fill()
 
@@ -123,6 +130,8 @@ guard let data = bitmap.representation(using: .png, properties: [:]) else {
 
 try data.write(to: URL(fileURLWithPath: outputPath))
 SWIFT
+
+  /usr/bin/sips -s dpiWidth 144 -s dpiHeight 144 "$output_path" >/dev/null
 }
 
 style_dmg_window() {
