@@ -54,6 +54,17 @@ struct MenuBarView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            Button {
+                controller.showHelpWindow()
+            } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Input Monitoring help")
+            .accessibilityLabel("Tappy Help")
+
             HStack(spacing: 5) {
                 Circle()
                     .fill(statusDotColor)

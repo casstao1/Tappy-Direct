@@ -33,7 +33,7 @@ final class KeyboardSoundController: ObservableObject {
     }
 
     private static let livePreviewDurationSeconds = 90
-    private static let currentWelcomeVersion = 1
+    private static let currentWelcomeVersion = 2
 
     @Published var isEnabled = true {
         didSet {
@@ -165,6 +165,7 @@ final class KeyboardSoundController: ObservableObject {
     private var menuPopover: NSPopover?
     private var welcomeWindow: NSWindow?
     private var welcomeWindowDelegate: TappyWelcomeWindowDelegate?
+    private var helpWindow: NSWindow?
     private var isWelcomePresentationScheduled = false
 
     private func setupMenuBarItem() {
@@ -592,6 +593,35 @@ final class KeyboardSoundController: ObservableObject {
         window.orderFrontRegardless()
     }
 
+    func showHelpWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        if let helpWindow {
+            helpWindow.makeKeyAndOrderFront(nil)
+            helpWindow.orderFrontRegardless()
+            return
+        }
+
+        let hostingController = NSHostingController(
+            rootView: TappyHelpView().environmentObject(self)
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 540),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Tappy Help"
+        window.contentViewController = hostingController
+        window.isReleasedWhenClosed = false
+        window.collectionBehavior = [.moveToActiveSpace]
+        window.center()
+
+        helpWindow = window
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+    }
+
     func finishWelcome() {
         markWelcomeSeen()
         welcomeWindow?.close()
@@ -618,6 +648,11 @@ final class KeyboardSoundController: ObservableObject {
 
     func openInputMonitoringSettings() {
         permissionManager.openInputMonitoringSettings()
+    }
+
+    func beginInputMonitoringSetup() {
+        requestKeyboardPermission()
+        openInputMonitoringSettings()
     }
 
     func openSoundSettings() {
@@ -966,34 +1001,207 @@ private struct WelcomeView: View {
     @EnvironmentObject private var controller: KeyboardSoundController
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 18) {
             Image(systemName: "keyboard.fill")
-                .font(.system(size: 30, weight: .semibold))
+                .font(.system(size: 32, weight: .semibold))
                 .foregroundStyle(Color.accentColor)
 
             VStack(spacing: 8) {
                 Text("Welcome to Tappy")
                     .font(.system(size: 28, weight: .bold))
 
-                Text("Tappy will add a keyboard icon to the toolbar at the top of your Mac in a moment.")
+                Text("Tappy will add a keyboard icon to the Mac menu bar in a moment.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Button {
-                controller.finishWelcome()
-            } label: {
-                Text("Continue")
-                    .frame(minWidth: 120)
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 24)
+
+                Text("To hear feedback while typing in other apps, enable Input Monitoring when macOS asks. Tappy never records typed text.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.defaultAction)
+            .padding(12)
+            .background(Color.orange.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            HStack(spacing: 10) {
+                Button {
+                    controller.showHelpWindow()
+                } label: {
+                    Label("FAQ", systemImage: "questionmark.circle")
+                }
+
+                Spacer()
+
+                setupButton
+
+                Button {
+                    controller.finishWelcome()
+                } label: {
+                    Text("Continue")
+                        .frame(minWidth: 92)
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
         }
         .padding(28)
-        .frame(width: 420)
+        .frame(width: 460)
         .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    @ViewBuilder
+    private var setupButton: some View {
+        switch controller.setupPhase {
+        case .needsPermission:
+            Button {
+                controller.beginInputMonitoringSetup()
+            } label: {
+                Label("Open Settings", systemImage: "gearshape")
+            }
+        case .needsRestart:
+            Button {
+                controller.relaunchApp()
+            } label: {
+                Label("Restart Tappy", systemImage: "arrow.clockwise")
+            }
+        case .complete:
+            EmptyView()
+        }
+    }
+}
+
+private struct TappyHelpView: View {
+    @EnvironmentObject private var controller: KeyboardSoundController
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Tappy Help")
+                        .font(.title2.weight(.bold))
+                    Text("Input Monitoring and troubleshooting")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 18)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(spacing: 10) {
+                        inputMonitoringAction
+
+                        Button {
+                            controller.refreshInputMonitoringStatus()
+                        } label: {
+                            Label("Refresh Status", systemImage: "arrow.clockwise")
+                        }
+
+                        if controller.setupPhase == .needsRestart {
+                            Button {
+                                controller.relaunchApp()
+                            } label: {
+                                Label("Restart Tappy", systemImage: "power")
+                            }
+                        }
+                    }
+                    .controlSize(.small)
+
+                    FAQItem(
+                        systemImage: "lock.shield",
+                        question: "Why does Tappy need Input Monitoring?",
+                        answer: "macOS requires Input Monitoring before an app can detect physical key presses outside its own window. Tappy uses those key categories only to play local sounds."
+                    )
+
+                    FAQItem(
+                        systemImage: "keyboard",
+                        question: "Can Tappy read what I type?",
+                        answer: "No. Tappy listens for physical key categories for auditory feedback. It does not record, store, or transmit typed text."
+                    )
+
+                    FAQItem(
+                        systemImage: "gearshape",
+                        question: "How do I enable it?",
+                        answer: "Open System Settings > Privacy & Security > Input Monitoring, turn on Tappy, then restart Tappy if macOS asks."
+                    )
+
+                    FAQItem(
+                        systemImage: "arrow.clockwise",
+                        question: "I enabled it and it still does not work.",
+                        answer: "Refresh the status here, then restart Tappy. Some macOS versions apply the new permission only after the app is relaunched."
+                    )
+
+                    FAQItem(
+                        systemImage: "speaker.wave.2",
+                        question: "I do not hear feedback sounds.",
+                        answer: "Make sure Feedback is on, the volume slider is up, a pack is selected, and your Mac output device is not muted."
+                    )
+
+                    FAQItem(
+                        systemImage: "menubar.rectangle",
+                        question: "Where is Tappy after it opens?",
+                        answer: "Tappy is a menu bar app. Click the keyboard icon at the top of your Mac to open the controls again."
+                    )
+                }
+                .padding(24)
+            }
+        }
+        .frame(width: 520, height: 540)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    private var inputMonitoringAction: some View {
+        Button {
+            controller.beginInputMonitoringSetup()
+        } label: {
+            Label("Open Input Monitoring", systemImage: "lock.shield")
+        }
+        .buttonStyle(.borderedProminent)
+    }
+}
+
+private struct FAQItem: View {
+    let systemImage: String
+    let question: String
+    let answer: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(question)
+                    .font(.subheadline.weight(.semibold))
+                Text(answer)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
     }
 }
 
