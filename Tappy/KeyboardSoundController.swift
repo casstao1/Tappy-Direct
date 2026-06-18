@@ -33,7 +33,7 @@ final class KeyboardSoundController: ObservableObject {
     }
 
     private static let livePreviewDurationSeconds = 90
-    private static let currentWelcomeVersion = 2
+    private static let currentWelcomeVersion = 3
 
     @Published var isEnabled = true {
         didSet {
@@ -1206,16 +1206,8 @@ private struct FAQItem: View {
 }
 
 private final class TappyWelcomeWindowDelegate: NSObject, NSWindowDelegate {
-    private weak var controller: KeyboardSoundController?
-
     init(controller: KeyboardSoundController) {
-        self.controller = controller
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        Task { @MainActor [weak controller] in
-            controller?.markWelcomeSeen()
-        }
+        super.init()
     }
 }
 
