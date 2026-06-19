@@ -216,7 +216,10 @@ xcodebuild \
   -project "$ROOT_DIR/Tappy.xcodeproj" \
   -scheme "$APP_NAME" \
   -configuration "$CONFIGURATION" \
+  -destination "generic/platform=macOS" \
   -derivedDataPath "$DERIVED_DATA_DIR" \
+  ARCHS="arm64 x86_64" \
+  ONLY_ACTIVE_ARCH=NO \
   "${signing_args[@]}" \
   build
 
