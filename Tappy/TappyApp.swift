@@ -1,9 +1,25 @@
 import AppKit
 import SwiftUI
 
+final class TappyAppDelegate: NSObject, NSApplicationDelegate {
+    private var controller: KeyboardSoundController?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        controller = KeyboardSoundController()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        controller?.handleAppDidBecomeActive()
+    }
+
+    func applicationDidResignActive(_ notification: Notification) {
+        controller?.handleAppDidResignActive()
+    }
+}
+
 @main
 struct TappyApp: App {
-    @StateObject private var controller = KeyboardSoundController()
+    @NSApplicationDelegateAdaptor(TappyAppDelegate.self) private var appDelegate
 
     var body: some Scene {
         // Tappy is a pure menu-bar app — all UI lives in the NSStatusItem
@@ -12,12 +28,6 @@ struct TappyApp: App {
         // to satisfy the App protocol; it is never opened.
         Settings {
             EmptyView()
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                    controller.handleAppDidBecomeActive()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-                    controller.handleAppDidResignActive()
-                }
         }
     }
 }
