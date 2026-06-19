@@ -33,7 +33,7 @@ final class KeyboardSoundController: ObservableObject {
     }
 
     private static let livePreviewDurationSeconds = 90
-    private static let currentWelcomeVersion = 3
+    private static let currentWelcomeVersion = 4
 
     @Published var isEnabled = true {
         didSet {

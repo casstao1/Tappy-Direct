@@ -1,8 +1,20 @@
 import AppKit
-import SwiftUI
 
+@main
 final class TappyAppDelegate: NSObject, NSApplicationDelegate {
+    private static var sharedDelegate: TappyAppDelegate?
+
     private var controller: KeyboardSoundController?
+
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = TappyAppDelegate()
+        sharedDelegate = delegate
+        app.delegate = delegate
+        app.setActivationPolicy(.accessory)
+        app.finishLaunching()
+        app.run()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         controller = KeyboardSoundController()
@@ -15,19 +27,8 @@ final class TappyAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidResignActive(_ notification: Notification) {
         controller?.handleAppDidResignActive()
     }
-}
 
-@main
-struct TappyApp: App {
-    @NSApplicationDelegateAdaptor(TappyAppDelegate.self) private var appDelegate
-
-    var body: some Scene {
-        // Tappy is a pure menu-bar app — all UI lives in the NSStatusItem
-        // popover managed by KeyboardSoundController.setupMenuBarItem().
-        // The Settings scene is kept as a no-op so SwiftUI has a valid scene
-        // to satisfy the App protocol; it is never opened.
-        Settings {
-            EmptyView()
-        }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 }
